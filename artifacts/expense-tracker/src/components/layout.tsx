@@ -21,14 +21,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Activity className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-bold text-xl tracking-tight">CoPilot</h1>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Finance Tracker</p>
+            <h1 className="font-bold text-xl tracking-tight">
+              Track your spending
+            </h1>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
+              Finance Tracker
+            </p>
           </div>
         </div>
 
         <div className="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 hide-scrollbar">
           {navItems.map((item) => {
-            const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+            const isActive =
+              location === item.href ||
+              (item.href !== "/" && location.startsWith(item.href));
             return (
               <Link
                 key={item.href}
@@ -37,7 +43,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 shrink-0 font-medium",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground hover-elevate"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground hover-elevate",
                 )}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
