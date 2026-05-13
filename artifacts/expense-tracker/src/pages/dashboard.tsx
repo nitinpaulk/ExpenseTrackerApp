@@ -1,19 +1,69 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   useGetExpenseSummary, getGetExpenseSummaryQueryKey,
   useGetMonthlyStats, getGetMonthlyStatsQueryKey,
-  useListExpenses, getListExpensesQueryKey
+  useListExpenses, getListExpensesQueryKey,
+  useDeleteExpense
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { DollarSign, TrendingUp, Calendar, Hash } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, Hash, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [pendingDeleteDescription, setPendingDeleteDescription] = useState<string>("");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const { data: summary, isLoading: loadingSummary } = useGetExpenseSummary({ query: { queryKey: getGetExpenseSummaryQueryKey() } });
   const { data: monthlyStats, isLoading: loadingStats } = useGetMonthlyStats({ query: { queryKey: getGetMonthlyStatsQueryKey() } });
   const { data: recentExpenses, isLoading: loadingExpenses } = useListExpenses({}, { query: { queryKey: getListExpensesQueryKey({}) } });
+
+  const deleteExpense = useDeleteExpense();
+
+  const requestDelete = (id: number, description: string) => {
+    setPendingDeleteId(id);
+    setPendingDeleteDescription(description);
+  };
+
+  const confirmDelete = () => {
+    if (pendingDeleteId === null) return;
+    deleteExpense.mutate({ id: pendingDeleteId }, {
+      onSuccess: () => {
+        toast({ title: "Expense removed" });
+        queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetExpenseSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetMonthlyStatsQueryKey() });
+      },
+      onError: () => {
+        toast({ title: "Could not remove expense", variant: "destructive" });
+      },
+      onSettled: () => {
+        setPendingDeleteId(null);
+        setPendingDeleteDescription("");
+      }
+    });
+  };
+
+  const cancelDelete = () => {
+    setPendingDeleteId(null);
+    setPendingDeleteDescription("");
+  };
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
@@ -91,14 +141,14 @@ export default function Dashboard() {
                   {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
                 </div>
               ) : recentExpenses && recentExpenses.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {recentExpenses.slice(0, 5).map((exp, idx) => (
                     <div 
                       key={exp.id} 
-                      className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors animate-in fade-in slide-in-from-bottom-2"
+                      className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors animate-in fade-in slide-in-from-bottom-2 group"
                       style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}
                     >
-                      <div className="min-w-0 flex-1 pr-4">
+                      <div className="min-w-0 flex-1 pr-3">
                         <p className="font-semibold text-sm truncate">{exp.description}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">{exp.categoryName}</span>
@@ -106,8 +156,18 @@ export default function Dashboard() {
                           <span className="text-[10px] text-muted-foreground font-mono">{format(new Date(exp.date), 'MMM d')}</span>
                         </div>
                       </div>
-                      <div className="font-mono font-bold text-sm shrink-0">
-                        {formatCurrency(exp.amount)}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="font-mono font-bold text-sm">
+                          {formatCurrency(exp.amount)}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                          onClick={() => requestDelete(exp.id, exp.description)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -119,6 +179,26 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => { if (!open) cancelDelete(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this expense?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>"{pendingDeleteDescription}"</strong> will be permanently deleted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -5,18 +5,30 @@ import {
   useDeleteExpense
 } from "@workspace/api-client-react";
 import { format } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit2, ListFilter, AlertCircle } from "lucide-react";
+import { Trash2, ListFilter, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Expenses() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [monthFilter, setMonthFilter] = useState<string>("all");
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [pendingDeleteDescription, setPendingDeleteDescription] = useState<string>("");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -31,21 +43,36 @@ export default function Expenses() {
   
   const deleteExpense = useDeleteExpense();
 
-  const handleDelete = (id: number) => {
-    deleteExpense.mutate({ id }, {
+  const requestDelete = (id: number, description: string) => {
+    setPendingDeleteId(id);
+    setPendingDeleteDescription(description);
+  };
+
+  const confirmDelete = () => {
+    if (pendingDeleteId === null) return;
+    deleteExpense.mutate({ id: pendingDeleteId }, {
       onSuccess: () => {
-        toast({ title: "Expense deleted" });
+        toast({ title: "Expense removed" });
         queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ["stats"] });
       },
       onError: () => {
-        toast({ title: "Error deleting expense", variant: "destructive" });
+        toast({ title: "Could not remove expense", variant: "destructive" });
+      },
+      onSettled: () => {
+        setPendingDeleteId(null);
+        setPendingDeleteDescription("");
       }
     });
   };
 
+  const cancelDelete = () => {
+    setPendingDeleteId(null);
+    setPendingDeleteDescription("");
+  };
+
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
-  // Generate last 12 months for filter
   const months = Array.from({ length: 12 }, (_, i) => {
     const d = new Date();
     d.setMonth(d.getMonth() - i);
@@ -115,7 +142,7 @@ export default function Expenses() {
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-base truncate">{exp.description}</p>
                       {exp.notes && (
-                        <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">Note</span>
+                        <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold transition-colors border-transparent bg-secondary text-secondary-foreground">Note</span>
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-sm">
@@ -127,11 +154,14 @@ export default function Expenses() {
                     <div className="font-mono font-bold text-lg">
                       {formatCurrency(exp.amount)}
                     </div>
-                    <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(exp.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all"
+                      onClick={() => requestDelete(exp.id, exp.description)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -143,7 +173,7 @@ export default function Expenses() {
               </div>
               <h3 className="text-lg font-medium">No expenses found</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-6 max-w-sm">
-                We couldn't find any expenses matching your current filters. Try adjusting them or add a new expense.
+                No expenses match your current filters. Try adjusting them or add a new one.
               </p>
               <Button asChild variant="outline">
                 <Link href="/add">Add New Expense</Link>
@@ -152,6 +182,26 @@ export default function Expenses() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => { if (!open) cancelDelete(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this expense?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>"{pendingDeleteDescription}"</strong> will be permanently deleted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
