@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Expense Tracker API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: expenses
+    description: Expense management
+  - name: categories
+    description: Expense categories
+  - name: stats
+    description: Spending statistics
 paths:
   /healthz:
     get:
@@ -24,6 +30,189 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      summary: List all expenses
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: month
+          in: query
+          schema:
+            type: string
+            description: "Format: YYYY-MM"
+      responses:
+        "200":
+          description: List of expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createExpense
+      tags: [expenses]
+      summary: Create a new expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Created expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+
+  /expenses/{id}:
+    get:
+      operationId: getExpense
+      tags: [expenses]
+      summary: Get a single expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expense detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateExpense
+      tags: [expenses]
+      summary: Update an expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseUpdate"
+      responses:
+        "200":
+          description: Updated expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteExpense
+      tags: [expenses]
+      summary: Delete an expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List all expense categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [categories]
+      summary: Create a custom category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Created category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+  /stats/by-category:
+    get:
+      operationId: getStatsByCategory
+      tags: [stats]
+      summary: Spending totals grouped by category
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+            description: "Format: YYYY-MM. Omit for all-time."
+      responses:
+        "200":
+          description: Category spending breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryStat"
+
+  /stats/monthly:
+    get:
+      operationId: getMonthlyStats
+      tags: [stats]
+      summary: Monthly spending totals for the past 12 months
+      responses:
+        "200":
+          description: Monthly spending breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonthlyStat"
+
+  /stats/summary:
+    get:
+      operationId: getExpenseSummary
+      tags: [stats]
+      summary: Overall spending summary
+      responses:
+        "200":
+          description: Summary statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpenseSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +223,129 @@ components:
       required:
         - status
 
+    Expense:
+      type: object
+      required: [id, amount, description, categoryId, categoryName, date, createdAt]
+      properties:
+        id:
+          type: integer
+        amount:
+          type: number
+        description:
+          type: string
+        categoryId:
+          type: integer
+        categoryName:
+          type: string
+        notes:
+          type: ["string", "null"]
+        date:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+
+    ExpenseInput:
+      type: object
+      required: [amount, description, categoryId, date]
+      properties:
+        amount:
+          type: number
+          minimum: 0.01
+        description:
+          type: string
+          minLength: 1
+        categoryId:
+          type: integer
+        notes:
+          type: string
+        date:
+          type: string
+          format: date
+
+    ExpenseUpdate:
+      type: object
+      properties:
+        amount:
+          type: number
+          minimum: 0.01
+        description:
+          type: string
+          minLength: 1
+        categoryId:
+          type: integer
+        notes:
+          type: ["string", "null"]
+        date:
+          type: string
+          format: date
+
+    Category:
+      type: object
+      required: [id, name, color, isDefault]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        color:
+          type: string
+        isDefault:
+          type: boolean
+
+    CategoryInput:
+      type: object
+      required: [name, color]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        color:
+          type: string
+
+    CategoryStat:
+      type: object
+      required: [categoryId, categoryName, color, total, count, percentage]
+      properties:
+        categoryId:
+          type: integer
+        categoryName:
+          type: string
+        color:
+          type: string
+        total:
+          type: number
+        count:
+          type: integer
+        percentage:
+          type: number
+
+    MonthlyStat:
+      type: object
+      required: [month, total, count]
+      properties:
+        month:
+          type: string
+          description: "Format: YYYY-MM"
+        total:
+          type: number
+        count:
+          type: integer
+
+    ExpenseSummary:
+      type: object
+      required: [totalAllTime, totalThisMonth, totalLastMonth, expenseCount, topCategory, averagePerDay]
+      properties:
+        totalAllTime:
+          type: number
+        totalThisMonth:
+          type: number
+        totalLastMonth:
+          type: number
+        expenseCount:
+          type: integer
+        topCategory:
+          type: ["string", "null"]
+        averagePerDay:
+          type: number
