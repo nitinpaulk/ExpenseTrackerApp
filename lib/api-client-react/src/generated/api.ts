@@ -17,6 +17,9 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  Card,
+  CardInput,
+  CardStat,
   Category,
   CategoryInput,
   CategoryStat,
@@ -24,6 +27,7 @@ import type {
   ExpenseInput,
   ExpenseSummary,
   ExpenseUpdate,
+  GetStatsByCardParams,
   GetStatsByCategoryParams,
   HealthStatus,
   ListExpensesParams,
@@ -715,6 +719,241 @@ export const useCreateCategory = <
 };
 
 /**
+ * @summary List all cards for the current user
+ */
+export const getListCardsUrl = () => {
+  return `/api/cards`;
+};
+
+export const listCards = async (options?: RequestInit): Promise<Card[]> => {
+  return customFetch<Card[]>(getListCardsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCardsQueryKey = () => {
+  return [`/api/cards`] as const;
+};
+
+export const getListCardsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCards>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listCards>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCardsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCards>>> = ({
+    signal,
+  }) => listCards({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCards>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCardsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCards>>
+>;
+export type ListCardsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all cards for the current user
+ */
+
+export function useListCards<
+  TData = Awaited<ReturnType<typeof listCards>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listCards>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCardsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a new card
+ */
+export const getCreateCardUrl = () => {
+  return `/api/cards`;
+};
+
+export const createCard = async (
+  cardInput: CardInput,
+  options?: RequestInit,
+): Promise<Card> => {
+  return customFetch<Card>(getCreateCardUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(cardInput),
+  });
+};
+
+export const getCreateCardMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCard>>,
+    TError,
+    { data: BodyType<CardInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCard>>,
+  TError,
+  { data: BodyType<CardInput> },
+  TContext
+> => {
+  const mutationKey = ["createCard"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCard>>,
+    { data: BodyType<CardInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCard(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCardMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCard>>
+>;
+export type CreateCardMutationBody = BodyType<CardInput>;
+export type CreateCardMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a new card
+ */
+export const useCreateCard = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCard>>,
+    TError,
+    { data: BodyType<CardInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCard>>,
+  TError,
+  { data: BodyType<CardInput> },
+  TContext
+> => {
+  return useMutation(getCreateCardMutationOptions(options));
+};
+
+/**
+ * @summary Delete a card
+ */
+export const getDeleteCardUrl = (id: number) => {
+  return `/api/cards/${id}`;
+};
+
+export const deleteCard = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCardUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCardMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCard>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCard>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteCard"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCard>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCard(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCardMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCard>>
+>;
+
+export type DeleteCardMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a card
+ */
+export const useDeleteCard = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCard>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCard>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteCardMutationOptions(options));
+};
+
+/**
  * @summary Spending totals grouped by category
  */
 export const getGetStatsByCategoryUrl = (params?: GetStatsByCategoryParams) => {
@@ -803,6 +1042,100 @@ export function useGetStatsByCategory<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStatsByCategoryQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Spending totals grouped by card
+ */
+export const getGetStatsByCardUrl = (params?: GetStatsByCardParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/stats/by-card?${stringifiedParams}`
+    : `/api/stats/by-card`;
+};
+
+export const getStatsByCard = async (
+  params?: GetStatsByCardParams,
+  options?: RequestInit,
+): Promise<CardStat[]> => {
+  return customFetch<CardStat[]>(getGetStatsByCardUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStatsByCardQueryKey = (params?: GetStatsByCardParams) => {
+  return [`/api/stats/by-card`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetStatsByCardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStatsByCard>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetStatsByCardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStatsByCard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStatsByCardQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStatsByCard>>> = ({
+    signal,
+  }) => getStatsByCard(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStatsByCard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStatsByCardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStatsByCard>>
+>;
+export type GetStatsByCardQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Spending totals grouped by card
+ */
+
+export function useGetStatsByCard<
+  TData = Awaited<ReturnType<typeof getStatsByCard>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetStatsByCardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStatsByCard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStatsByCardQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

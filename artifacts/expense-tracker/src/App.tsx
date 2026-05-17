@@ -11,6 +11,7 @@ import Dashboard from "@/pages/dashboard";
 import Expenses from "@/pages/expenses";
 import AddExpense from "@/pages/add-expense";
 import Categories from "@/pages/categories";
+import Cards from "@/pages/cards";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 
@@ -170,6 +171,7 @@ function AppRoutes() {
             <Route path="/expenses" component={() => <ProtectedRoute component={Expenses} />} />
             <Route path="/add" component={() => <ProtectedRoute component={AddExpense} />} />
             <Route path="/categories" component={() => <ProtectedRoute component={Categories} />} />
+            <Route path="/cards" component={() => <ProtectedRoute component={Cards} />} />
             <Route component={NotFound} />
           </Switch>
           <Toaster />

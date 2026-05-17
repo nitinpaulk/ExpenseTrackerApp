@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { PieChart, List, PlusCircle, Tags, Activity, LogOut } from "lucide-react";
+import { PieChart, List, PlusCircle, Tags, Activity, LogOut, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClerk, useUser } from "@clerk/react";
 
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/expenses", label: "Expenses", icon: List },
   { href: "/add", label: "Add Expense", icon: PlusCircle },
   { href: "/categories", label: "Categories", icon: Tags },
+  { href: "/cards", label: "Cards", icon: CreditCard },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

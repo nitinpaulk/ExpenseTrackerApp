@@ -14,6 +14,8 @@ tags:
     description: Expense management
   - name: categories
     description: Expense categories
+  - name: cards
+    description: Credit/debit card management
   - name: stats
     description: Spending statistics
 paths:
@@ -164,6 +166,53 @@ paths:
               schema:
                 $ref: "#/components/schemas/Category"
 
+  /cards:
+    get:
+      operationId: listCards
+      tags: [cards]
+      summary: List all cards for the current user
+      responses:
+        "200":
+          description: List of cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Card"
+    post:
+      operationId: createCard
+      tags: [cards]
+      summary: Add a new card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardInput"
+      responses:
+        "201":
+          description: Created card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+
+  /cards/{id}:
+    delete:
+      operationId: deleteCard
+      tags: [cards]
+      summary: Delete a card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /stats/by-category:
     get:
       operationId: getStatsByCategory
@@ -184,6 +233,27 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CategoryStat"
+
+  /stats/by-card:
+    get:
+      operationId: getStatsByCard
+      tags: [stats]
+      summary: Spending totals grouped by card
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+            description: "Format: YYYY-MM. Omit for all-time."
+      responses:
+        "200":
+          description: Card spending breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CardStat"
 
   /stats/monthly:
     get:
@@ -237,6 +307,14 @@ components:
           type: integer
         categoryName:
           type: string
+        cardId:
+          type: ["integer", "null"]
+        cardName:
+          type: ["string", "null"]
+        cardColor:
+          type: ["string", "null"]
+        cardLastFour:
+          type: ["string", "null"]
         notes:
           type: ["string", "null"]
         date:
@@ -258,6 +336,8 @@ components:
           minLength: 1
         categoryId:
           type: integer
+        cardId:
+          type: integer
         notes:
           type: string
         date:
@@ -275,6 +355,8 @@ components:
           minLength: 1
         categoryId:
           type: integer
+        cardId:
+          type: ["integer", "null"]
         notes:
           type: ["string", "null"]
         date:
@@ -304,6 +386,34 @@ components:
         color:
           type: string
 
+    Card:
+      type: object
+      required: [id, name, color, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        lastFour:
+          type: ["string", "null"]
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CardInput:
+      type: object
+      required: [name, color]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        lastFour:
+          type: string
+        color:
+          type: string
+
     CategoryStat:
       type: object
       required: [categoryId, categoryName, color, total, count, percentage]
@@ -314,6 +424,25 @@ components:
           type: string
         color:
           type: string
+        total:
+          type: number
+        count:
+          type: integer
+        percentage:
+          type: number
+
+    CardStat:
+      type: object
+      required: [cardId, cardName, color, total, count, percentage]
+      properties:
+        cardId:
+          type: ["integer", "null"]
+        cardName:
+          type: string
+        color:
+          type: string
+        lastFour:
+          type: ["string", "null"]
         total:
           type: number
         count:

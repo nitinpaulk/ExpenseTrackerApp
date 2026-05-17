@@ -3,25 +3,27 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { 
-  useCreateExpense, 
-  useListCategories, getListCategoriesQueryKey 
+import {
+  useCreateExpense,
+  useListCategories, getListCategoriesQueryKey,
+  useListCards, getListCardsQueryKey,
 } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { CreditCard } from "lucide-react";
 
 const formSchema = z.object({
   amount: z.coerce.number().positive({ message: "Amount must be positive" }),
   description: z.string().min(1, { message: "Description is required" }),
   categoryId: z.coerce.number().positive({ message: "Category is required" }),
+  cardId: z.coerce.number().optional(),
   date: z.string().min(1, { message: "Date is required" }),
   notes: z.string().optional(),
 });
@@ -30,6 +32,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function AddExpense() {
   const { data: categories } = useListCategories({ query: { queryKey: getListCategoriesQueryKey() } });
+  const { data: cards } = useListCards({ query: { queryKey: getListCardsQueryKey() } });
   const createExpense = useCreateExpense();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -41,13 +44,22 @@ export default function AddExpense() {
       amount: undefined,
       description: "",
       categoryId: undefined,
+      cardId: undefined,
       date: format(new Date(), "yyyy-MM-dd"),
       notes: "",
     },
   });
 
   const onSubmit = (values: FormValues) => {
-    createExpense.mutate({ data: values }, {
+    const payload = {
+      amount: values.amount,
+      description: values.description,
+      categoryId: values.categoryId,
+      cardId: values.cardId ?? undefined,
+      date: values.date,
+      notes: values.notes || undefined,
+    };
+    createExpense.mutate({ data: payload }, {
       onSuccess: () => {
         toast({ title: "Expense logged successfully" });
         queryClient.invalidateQueries();
@@ -70,7 +82,7 @@ export default function AddExpense() {
         <CardContent className="p-6 sm:p-8">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -81,13 +93,13 @@ export default function AddExpense() {
                       <FormControl>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">$</span>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0.00" 
-                            className="pl-8 font-mono text-lg" 
-                            {...field} 
-                            value={field.value || ""} 
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            className="pl-8 font-mono text-lg"
+                            {...field}
+                            value={field.value || ""}
                           />
                         </div>
                       </FormControl>
@@ -125,33 +137,81 @@ export default function AddExpense() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="categoryId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value?.toString() || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories?.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id.toString()}>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                              {cat.name}
-                            </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value?.toString() || ""}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories?.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                                {cat.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="cardId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Credit card
+                        <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                      </FormLabel>
+                      <Select
+                        onValueChange={(val) => field.onChange(val === "none" ? undefined : Number(val))}
+                        value={field.value?.toString() || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="No card" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            <span className="text-muted-foreground">No card</span>
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                          {cards?.map((card) => (
+                            <SelectItem key={card.id} value={card.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: card.color }} />
+                                <CreditCard className="w-3.5 h-3.5 text-muted-foreground" />
+                                {card.name}
+                                {card.lastFour && (
+                                  <span className="text-muted-foreground font-mono text-xs">••{card.lastFour}</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {cards?.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          <a href="/cards" className="underline hover:text-foreground transition-colors">Add a card</a> to track card usage.
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}

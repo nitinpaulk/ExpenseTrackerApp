@@ -16,6 +16,14 @@ export interface Expense {
   categoryId: number;
   categoryName: string;
   /** @nullable */
+  cardId?: number | null;
+  /** @nullable */
+  cardName?: string | null;
+  /** @nullable */
+  cardColor?: string | null;
+  /** @nullable */
+  cardLastFour?: string | null;
+  /** @nullable */
   notes?: string | null;
   date: string;
   createdAt: string;
@@ -27,6 +35,7 @@ export interface ExpenseInput {
   /** @minLength 1 */
   description: string;
   categoryId: number;
+  cardId?: number;
   notes?: string;
   date: string;
 }
@@ -37,6 +46,8 @@ export interface ExpenseUpdate {
   /** @minLength 1 */
   description?: string;
   categoryId?: number;
+  /** @nullable */
+  cardId?: number | null;
   /** @nullable */
   notes?: string | null;
   date?: string;
@@ -55,10 +66,38 @@ export interface CategoryInput {
   color: string;
 }
 
+export interface Card {
+  id: number;
+  name: string;
+  /** @nullable */
+  lastFour?: string | null;
+  color: string;
+  createdAt: string;
+}
+
+export interface CardInput {
+  /** @minLength 1 */
+  name: string;
+  lastFour?: string;
+  color: string;
+}
+
 export interface CategoryStat {
   categoryId: number;
   categoryName: string;
   color: string;
+  total: number;
+  count: number;
+  percentage: number;
+}
+
+export interface CardStat {
+  /** @nullable */
+  cardId: number | null;
+  cardName: string;
+  color: string;
+  /** @nullable */
+  lastFour?: string | null;
   total: number;
   count: number;
   percentage: number;
@@ -90,6 +129,13 @@ export type ListExpensesParams = {
 };
 
 export type GetStatsByCategoryParams = {
+  /**
+   * Format: YYYY-MM. Omit for all-time.
+   */
+  month?: string;
+};
+
+export type GetStatsByCardParams = {
   /**
    * Format: YYYY-MM. Omit for all-time.
    */

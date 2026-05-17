@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql, desc } from "drizzle-orm";
-import { db, expensesTable, categoriesTable } from "@workspace/db";
+import { db, expensesTable, categoriesTable, cardsTable } from "@workspace/db";
 import {
   ListExpensesQueryParams,
   CreateExpenseBody,
@@ -19,6 +19,10 @@ const expenseWithCategory = {
   description: expensesTable.description,
   categoryId: expensesTable.categoryId,
   categoryName: categoriesTable.name,
+  cardId: expensesTable.cardId,
+  cardName: cardsTable.name,
+  cardColor: cardsTable.color,
+  cardLastFour: cardsTable.lastFour,
   notes: expensesTable.notes,
   date: expensesTable.date,
   createdAt: expensesTable.createdAt,
@@ -48,6 +52,7 @@ router.get("/expenses", requireAuth, async (req, res): Promise<void> => {
     .select(expenseWithCategory)
     .from(expensesTable)
     .innerJoin(categoriesTable, eq(expensesTable.categoryId, categoriesTable.id))
+    .leftJoin(cardsTable, eq(expensesTable.cardId, cardsTable.id))
     .where(and(...conditions))
     .orderBy(desc(expensesTable.date), desc(expensesTable.createdAt));
 
@@ -74,6 +79,7 @@ router.post("/expenses", requireAuth, async (req, res): Promise<void> => {
       amount: String(parsed.data.amount),
       description: parsed.data.description,
       categoryId: parsed.data.categoryId,
+      cardId: parsed.data.cardId ?? null,
       notes: parsed.data.notes ?? null,
       date: parsed.data.date,
     })
@@ -83,6 +89,7 @@ router.post("/expenses", requireAuth, async (req, res): Promise<void> => {
     .select(expenseWithCategory)
     .from(expensesTable)
     .innerJoin(categoriesTable, eq(expensesTable.categoryId, categoriesTable.id))
+    .leftJoin(cardsTable, eq(expensesTable.cardId, cardsTable.id))
     .where(eq(expensesTable.id, expense.id));
 
   res.status(201).json({ ...result, amount: parseFloat(result.amount as unknown as string) });
@@ -101,6 +108,7 @@ router.get("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
     .select(expenseWithCategory)
     .from(expensesTable)
     .innerJoin(categoriesTable, eq(expensesTable.categoryId, categoriesTable.id))
+    .leftJoin(cardsTable, eq(expensesTable.cardId, cardsTable.id))
     .where(and(eq(expensesTable.id, params.data.id), eq(expensesTable.userId, userId)));
 
   if (!expense) {
@@ -130,6 +138,7 @@ router.patch("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
   if (parsed.data.amount !== undefined) updateData.amount = String(parsed.data.amount);
   if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
   if (parsed.data.categoryId !== undefined) updateData.categoryId = parsed.data.categoryId;
+  if ("cardId" in parsed.data) updateData.cardId = parsed.data.cardId ?? null;
   if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
   if (parsed.data.date !== undefined) updateData.date = parsed.data.date;
 
@@ -148,6 +157,7 @@ router.patch("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
     .select(expenseWithCategory)
     .from(expensesTable)
     .innerJoin(categoriesTable, eq(expensesTable.categoryId, categoriesTable.id))
+    .leftJoin(cardsTable, eq(expensesTable.cardId, cardsTable.id))
     .where(eq(expensesTable.id, updated.id));
 
   res.json({ ...result, amount: parseFloat(result.amount as unknown as string) });

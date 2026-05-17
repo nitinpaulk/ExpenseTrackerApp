@@ -13,6 +13,14 @@ export interface Expense {
   categoryId: number;
   categoryName: string;
   /** @nullable */
+  cardId?: number | null;
+  /** @nullable */
+  cardName?: string | null;
+  /** @nullable */
+  cardColor?: string | null;
+  /** @nullable */
+  cardLastFour?: string | null;
+  /** @nullable */
   notes?: string | null;
   date: Date;
   createdAt: Date;

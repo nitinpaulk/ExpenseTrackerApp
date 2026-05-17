@@ -12,6 +12,7 @@ export interface ExpenseInput {
   /** @minLength 1 */
   description: string;
   categoryId: number;
+  cardId?: number;
   notes?: string;
   date: Date;
 }

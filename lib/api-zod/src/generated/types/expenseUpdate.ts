@@ -13,6 +13,8 @@ export interface ExpenseUpdate {
   description?: string;
   categoryId?: number;
   /** @nullable */
+  cardId?: number | null;
+  /** @nullable */
   notes?: string | null;
   date?: Date;
 }

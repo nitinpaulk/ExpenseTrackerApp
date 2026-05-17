@@ -127,4 +127,68 @@ router.get("/stats/summary", requireAuth, async (req, res): Promise<void> => {
   });
 });
 
+router.get("/stats/by-card", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as any).userId as string;
+  const month = req.query.month as string | undefined;
+
+  const monthFilter = month
+    ? sql`AND TO_CHAR(e.date, 'YYYY-MM') = ${month}`
+    : sql``;
+
+  const rows = await db.execute(sql`
+    SELECT
+      ca.id AS "cardId",
+      ca.name AS "cardName",
+      ca.color AS "color",
+      ca.last_four AS "lastFour",
+      COALESCE(SUM(e.amount), 0) AS total,
+      COUNT(e.id) AS count
+    FROM cards ca
+    LEFT JOIN expenses e
+      ON e.card_id = ca.id
+      AND e.user_id = ${userId}
+      ${monthFilter}
+    WHERE ca.user_id = ${userId}
+    GROUP BY ca.id, ca.name, ca.color, ca.last_four
+    UNION ALL
+    SELECT
+      NULL AS "cardId",
+      'No Card' AS "cardName",
+      '#94a3b8' AS "color",
+      NULL AS "lastFour",
+      COALESCE(SUM(e.amount), 0) AS total,
+      COUNT(e.id) AS count
+    FROM expenses e
+    WHERE e.user_id = ${userId}
+      AND e.card_id IS NULL
+      ${monthFilter}
+    ORDER BY total DESC
+  `);
+
+  const data = rows.rows as Array<{
+    cardId: number | null;
+    cardName: string;
+    color: string;
+    lastFour: string | null;
+    total: string;
+    count: string;
+  }>;
+
+  const totalAll = data.reduce((sum, r) => sum + parseFloat(r.total), 0);
+
+  const result = data
+    .filter((r) => parseFloat(r.total) > 0 || r.cardId !== null)
+    .map((r) => ({
+      cardId: r.cardId,
+      cardName: r.cardName,
+      color: r.color,
+      lastFour: r.lastFour,
+      total: parseFloat(r.total),
+      count: parseInt(r.count, 10),
+      percentage: totalAll > 0 ? (parseFloat(r.total) / totalAll) * 100 : 0,
+    }));
+
+  res.json(result);
+});
+
 export default router;

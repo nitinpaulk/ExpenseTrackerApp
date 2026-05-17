@@ -29,6 +29,10 @@ export const ListExpensesResponseItem = zod.object({
   description: zod.string(),
   categoryId: zod.number(),
   categoryName: zod.string(),
+  cardId: zod.number().nullish(),
+  cardName: zod.string().nullish(),
+  cardColor: zod.string().nullish(),
+  cardLastFour: zod.string().nullish(),
   notes: zod.string().nullish(),
   date: zod.coerce.date(),
   createdAt: zod.coerce.date(),
@@ -44,6 +48,7 @@ export const CreateExpenseBody = zod.object({
   amount: zod.number().min(createExpenseBodyAmountMin),
   description: zod.string().min(1),
   categoryId: zod.number(),
+  cardId: zod.number().optional(),
   notes: zod.string().optional(),
   date: zod.coerce.date(),
 });
@@ -61,6 +66,10 @@ export const GetExpenseResponse = zod.object({
   description: zod.string(),
   categoryId: zod.number(),
   categoryName: zod.string(),
+  cardId: zod.number().nullish(),
+  cardName: zod.string().nullish(),
+  cardColor: zod.string().nullish(),
+  cardLastFour: zod.string().nullish(),
   notes: zod.string().nullish(),
   date: zod.coerce.date(),
   createdAt: zod.coerce.date(),
@@ -79,6 +88,7 @@ export const UpdateExpenseBody = zod.object({
   amount: zod.number().min(updateExpenseBodyAmountMin).optional(),
   description: zod.string().min(1).optional(),
   categoryId: zod.number().optional(),
+  cardId: zod.number().nullish(),
   notes: zod.string().nullish(),
   date: zod.coerce.date().optional(),
 });
@@ -89,6 +99,10 @@ export const UpdateExpenseResponse = zod.object({
   description: zod.string(),
   categoryId: zod.number(),
   categoryName: zod.string(),
+  cardId: zod.number().nullish(),
+  cardName: zod.string().nullish(),
+  cardColor: zod.string().nullish(),
+  cardLastFour: zod.string().nullish(),
   notes: zod.string().nullish(),
   date: zod.coerce.date(),
   createdAt: zod.coerce.date(),
@@ -122,6 +136,35 @@ export const CreateCategoryBody = zod.object({
 });
 
 /**
+ * @summary List all cards for the current user
+ */
+export const ListCardsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  lastFour: zod.string().nullish(),
+  color: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListCardsResponse = zod.array(ListCardsResponseItem);
+
+/**
+ * @summary Add a new card
+ */
+
+export const CreateCardBody = zod.object({
+  name: zod.string().min(1),
+  lastFour: zod.string().optional(),
+  color: zod.string(),
+});
+
+/**
+ * @summary Delete a card
+ */
+export const DeleteCardParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Spending totals grouped by category
  */
 export const GetStatsByCategoryQueryParams = zod.object({
@@ -139,6 +182,24 @@ export const GetStatsByCategoryResponseItem = zod.object({
 export const GetStatsByCategoryResponse = zod.array(
   GetStatsByCategoryResponseItem,
 );
+
+/**
+ * @summary Spending totals grouped by card
+ */
+export const GetStatsByCardQueryParams = zod.object({
+  month: zod.coerce.string().optional(),
+});
+
+export const GetStatsByCardResponseItem = zod.object({
+  cardId: zod.number().nullable(),
+  cardName: zod.string(),
+  color: zod.string(),
+  lastFour: zod.string().nullish(),
+  total: zod.number(),
+  count: zod.number(),
+  percentage: zod.number(),
+});
+export const GetStatsByCardResponse = zod.array(GetStatsByCardResponseItem);
 
 /**
  * @summary Monthly spending totals for the past 12 months
