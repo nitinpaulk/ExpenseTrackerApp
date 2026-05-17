@@ -1,10 +1,13 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { PieChart, List, PlusCircle, Tags, Activity } from "lucide-react";
+import { PieChart, List, PlusCircle, Tags, Activity, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useClerk, useUser } from "@clerk/react";
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: PieChart },
+  { href: "/dashboard", label: "Dashboard", icon: PieChart },
   { href: "/expenses", label: "Expenses", icon: List },
   { href: "/add", label: "Add Expense", icon: PlusCircle },
   { href: "/categories", label: "Categories", icon: Tags },
@@ -12,6 +15,8 @@ const navItems = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { signOut } = useClerk();
+  const { user } = useUser();
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row">
@@ -21,12 +26,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Activity className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-bold text-xl tracking-tight">
-              Track your spending
-            </h1>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
-              Finance Tracker
-            </p>
+            <h1 className="font-bold text-xl tracking-tight">Track your spending</h1>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Finance Tracker</p>
           </div>
         </div>
 
@@ -34,7 +35,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {navItems.map((item) => {
             const isActive =
               location === item.href ||
-              (item.href !== "/" && location.startsWith(item.href));
+              (item.href !== "/dashboard" && location.startsWith(item.href));
             return (
               <Link
                 key={item.href}
@@ -51,6 +52,31 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+        </div>
+
+        <div className="mt-auto flex flex-col gap-3">
+          {user && (
+            <div className="flex items-center gap-3 px-2">
+              {user.imageUrl ? (
+                <img src={user.imageUrl} alt={user.firstName ?? "User"} className="w-8 h-8 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold shrink-0">
+                  {(user.firstName?.[0] ?? user.emailAddresses?.[0]?.emailAddress?.[0] ?? "?").toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate">{user.firstName ?? user.emailAddresses?.[0]?.emailAddress}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.emailAddresses?.[0]?.emailAddress}</p>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => signOut({ redirectUrl: basePath || "/" })}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200 font-medium w-full text-left"
+          >
+            <LogOut className="w-5 h-5 shrink-0" />
+            <span>Sign out</span>
+          </button>
         </div>
       </nav>
 

@@ -9,6 +9,7 @@ import {
   UpdateExpenseBody,
   DeleteExpenseParams,
 } from "@workspace/api-zod";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
@@ -23,14 +24,15 @@ const expenseWithCategory = {
   createdAt: expensesTable.createdAt,
 };
 
-router.get("/expenses", async (req, res): Promise<void> => {
+router.get("/expenses", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as any).userId as string;
   const params = ListExpensesQueryParams.safeParse(req.query);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
-  const conditions = [];
+  const conditions = [eq(expensesTable.userId, userId)];
 
   if (params.data.category) {
     conditions.push(eq(categoriesTable.name, params.data.category));
@@ -46,7 +48,7 @@ router.get("/expenses", async (req, res): Promise<void> => {
     .select(expenseWithCategory)
     .from(expensesTable)
     .innerJoin(categoriesTable, eq(expensesTable.categoryId, categoriesTable.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(expensesTable.date), desc(expensesTable.createdAt));
 
   const mapped = expenses.map((e) => ({
@@ -57,7 +59,8 @@ router.get("/expenses", async (req, res): Promise<void> => {
   res.json(mapped);
 });
 
-router.post("/expenses", async (req, res): Promise<void> => {
+router.post("/expenses", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as any).userId as string;
   const parsed = CreateExpenseBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -67,6 +70,7 @@ router.post("/expenses", async (req, res): Promise<void> => {
   const [expense] = await db
     .insert(expensesTable)
     .values({
+      userId,
       amount: String(parsed.data.amount),
       description: parsed.data.description,
       categoryId: parsed.data.categoryId,
@@ -84,7 +88,8 @@ router.post("/expenses", async (req, res): Promise<void> => {
   res.status(201).json({ ...result, amount: parseFloat(result.amount as unknown as string) });
 });
 
-router.get("/expenses/:id", async (req, res): Promise<void> => {
+router.get("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as any).userId as string;
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = GetExpenseParams.safeParse({ id: parseInt(raw, 10) });
   if (!params.success) {
@@ -96,7 +101,7 @@ router.get("/expenses/:id", async (req, res): Promise<void> => {
     .select(expenseWithCategory)
     .from(expensesTable)
     .innerJoin(categoriesTable, eq(expensesTable.categoryId, categoriesTable.id))
-    .where(eq(expensesTable.id, params.data.id));
+    .where(and(eq(expensesTable.id, params.data.id), eq(expensesTable.userId, userId)));
 
   if (!expense) {
     res.status(404).json({ error: "Expense not found" });
@@ -106,7 +111,8 @@ router.get("/expenses/:id", async (req, res): Promise<void> => {
   res.json({ ...expense, amount: parseFloat(expense.amount as unknown as string) });
 });
 
-router.patch("/expenses/:id", async (req, res): Promise<void> => {
+router.patch("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as any).userId as string;
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = UpdateExpenseParams.safeParse({ id: parseInt(raw, 10) });
   if (!params.success) {
@@ -130,7 +136,7 @@ router.patch("/expenses/:id", async (req, res): Promise<void> => {
   const [updated] = await db
     .update(expensesTable)
     .set(updateData)
-    .where(eq(expensesTable.id, params.data.id))
+    .where(and(eq(expensesTable.id, params.data.id), eq(expensesTable.userId, userId)))
     .returning();
 
   if (!updated) {
@@ -147,7 +153,8 @@ router.patch("/expenses/:id", async (req, res): Promise<void> => {
   res.json({ ...result, amount: parseFloat(result.amount as unknown as string) });
 });
 
-router.delete("/expenses/:id", async (req, res): Promise<void> => {
+router.delete("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as any).userId as string;
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = DeleteExpenseParams.safeParse({ id: parseInt(raw, 10) });
   if (!params.success) {
@@ -157,7 +164,7 @@ router.delete("/expenses/:id", async (req, res): Promise<void> => {
 
   const [deleted] = await db
     .delete(expensesTable)
-    .where(eq(expensesTable.id, params.data.id))
+    .where(and(eq(expensesTable.id, params.data.id), eq(expensesTable.userId, userId)))
     .returning();
 
   if (!deleted) {
