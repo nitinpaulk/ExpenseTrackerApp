@@ -1,15 +1,30 @@
-import React, { useState } from "react";
-import { 
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
   useListExpenses, getListExpensesQueryKey,
   useListCategories, getListCategoriesQueryKey,
-  useDeleteExpense
+  useListCards, getListCardsQueryKey,
+  useDeleteExpense,
+  useUpdateExpense,
 } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +37,254 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ListFilter, AlertCircle } from "lucide-react";
+import { Trash2, ListFilter, AlertCircle, Pencil, CreditCard } from "lucide-react";
 import { Link } from "wouter";
+
+type ExpenseRow = {
+  id: number;
+  amount: number;
+  description: string;
+  categoryId: number;
+  categoryName: string;
+  cardId?: number | null;
+  cardName?: string | null;
+  cardColor?: string | null;
+  cardLastFour?: string | null;
+  notes?: string | null;
+  date: string;
+  createdAt: string;
+};
+
+const editSchema = z.object({
+  amount: z.coerce.number().positive({ message: "Amount must be positive" }),
+  description: z.string().min(1, { message: "Description is required" }),
+  categoryId: z.coerce.number().positive({ message: "Category is required" }),
+  cardId: z.coerce.number().optional(),
+  date: z.string().min(1, { message: "Date is required" }),
+  notes: z.string().optional(),
+});
+type EditValues = z.infer<typeof editSchema>;
+
+function EditExpenseDialog({
+  expense,
+  onClose,
+}: {
+  expense: ExpenseRow;
+  onClose: () => void;
+}) {
+  const { data: categories } = useListCategories({ query: { queryKey: getListCategoriesQueryKey() } });
+  const { data: cards } = useListCards({ query: { queryKey: getListCardsQueryKey() } });
+  const updateExpense = useUpdateExpense();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const form = useForm<EditValues>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      amount: expense.amount,
+      description: expense.description,
+      categoryId: expense.categoryId,
+      cardId: expense.cardId ?? undefined,
+      date: expense.date,
+      notes: expense.notes ?? "",
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      amount: expense.amount,
+      description: expense.description,
+      categoryId: expense.categoryId,
+      cardId: expense.cardId ?? undefined,
+      date: expense.date,
+      notes: expense.notes ?? "",
+    });
+  }, [expense.id]);
+
+  const onSubmit = (values: EditValues) => {
+    updateExpense.mutate(
+      {
+        id: expense.id,
+        data: {
+          amount: values.amount,
+          description: values.description,
+          categoryId: values.categoryId,
+          cardId: values.cardId ?? null,
+          date: values.date,
+          notes: values.notes || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Expense updated" });
+          queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+          queryClient.invalidateQueries({ queryKey: ["stats"] });
+          onClose();
+        },
+        onError: () => {
+          toast({ title: "Failed to update expense", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  return (
+    <DialogContent className="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>Edit Expense</DialogTitle>
+      </DialogHeader>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amount</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="pl-8 font-mono"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date</FormLabel>
+                  <FormControl>
+                    <Input type="date" className="font-mono" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. Morning Coffee" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="categoryId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value?.toString() || ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                            {cat.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="cardId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Card <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                  <Select
+                    onValueChange={(val) => field.onChange(val === "none" ? undefined : Number(val))}
+                    value={field.value?.toString() || "none"}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="No card" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        <span className="text-muted-foreground">No card</span>
+                      </SelectItem>
+                      {cards?.map((card) => (
+                        <SelectItem key={card.id} value={card.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: card.color }} />
+                            <CreditCard className="w-3.5 h-3.5 text-muted-foreground" />
+                            {card.name}
+                            {card.lastFour && (
+                              <span className="text-muted-foreground font-mono text-xs">••{card.lastFour}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Notes <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                <FormControl>
+                  <Textarea placeholder="Any additional details..." className="resize-none h-20" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateExpense.isPending} className="min-w-[100px]">
+              {updateExpense.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
 
 export default function Expenses() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -32,6 +293,7 @@ export default function Expenses() {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [pendingDeleteDescription, setPendingDeleteDescription] = useState<string>("");
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -53,28 +315,16 @@ export default function Expenses() {
 
   const toggleAll = () => {
     if (allSelected) {
-      setSelected((prev) => {
-        const next = new Set(prev);
-        allIds.forEach((id) => next.delete(id));
-        return next;
-      });
+      setSelected((prev) => { const next = new Set(prev); allIds.forEach((id) => next.delete(id)); return next; });
     } else {
-      setSelected((prev) => {
-        const next = new Set(prev);
-        allIds.forEach((id) => next.add(id));
-        return next;
-      });
+      setSelected((prev) => { const next = new Set(prev); allIds.forEach((id) => next.add(id)); return next; });
     }
   };
 
   const toggleOne = (id: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
@@ -97,13 +347,8 @@ export default function Expenses() {
         setSelected((prev) => { const n = new Set(prev); n.delete(pendingDeleteId!); return n; });
         invalidateAll();
       },
-      onError: () => {
-        toast({ title: "Could not remove expense", variant: "destructive" });
-      },
-      onSettled: () => {
-        setPendingDeleteId(null);
-        setPendingDeleteDescription("");
-      }
+      onError: () => { toast({ title: "Could not remove expense", variant: "destructive" }); },
+      onSettled: () => { setPendingDeleteId(null); setPendingDeleteDescription(""); }
     });
   };
 
@@ -115,9 +360,7 @@ export default function Expenses() {
         await new Promise<void>((resolve, reject) => {
           deleteExpense.mutate({ id }, { onSuccess: () => resolve(), onError: () => reject() });
         });
-      } catch {
-        failed++;
-      }
+      } catch { failed++; }
     }
     setSelected(new Set());
     invalidateAll();
@@ -240,21 +483,38 @@ export default function Expenses() {
                           <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold border-transparent bg-secondary text-secondary-foreground">Note</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-sm">
+                      <div className="flex items-center gap-3 mt-1 text-sm flex-wrap">
                         <span className="uppercase tracking-wider font-bold text-muted-foreground text-[11px] px-2 py-1 bg-muted rounded-md">{exp.categoryName}</span>
+                        {exp.cardName && (
+                          <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                            <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: exp.cardColor ?? "#94a3b8" }} />
+                            {exp.cardName}
+                            {exp.cardLastFour && <span className="font-mono">••{exp.cardLastFour}</span>}
+                          </span>
+                        )}
                         <span className="text-muted-foreground font-mono">{format(new Date(exp.date), 'MMM d, yyyy')}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="font-mono font-bold text-lg">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <div className="font-mono font-bold text-lg mr-2">
                         {formatCurrency(exp.amount)}
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all"
+                        onClick={() => setEditingExpense(exp as ExpenseRow)}
+                        title="Edit expense"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all"
                         onClick={() => requestDelete(exp.id, exp.description)}
+                        title="Delete expense"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -279,6 +539,16 @@ export default function Expenses() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit dialog */}
+      <Dialog open={editingExpense !== null} onOpenChange={(open) => { if (!open) setEditingExpense(null); }}>
+        {editingExpense && (
+          <EditExpenseDialog
+            expense={editingExpense}
+            onClose={() => setEditingExpense(null)}
+          />
+        )}
+      </Dialog>
 
       {/* Single delete confirmation */}
       <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => { if (!open) { setPendingDeleteId(null); setPendingDeleteDescription(""); } }}>
