@@ -81,10 +81,21 @@ router.delete("/cards/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const card = await db
+    .select({ id: cardsTable.id })
+    .from(cardsTable)
+    .where(and(eq(cardsTable.id, params.data.id), eq(cardsTable.userId, userId)))
+    .then((rows) => rows[0] ?? null);
+
+  if (!card) {
+    res.status(404).json({ error: "Card not found" });
+    return;
+  }
+
   const [{ linkedCount }] = await db
     .select({ linkedCount: count() })
     .from(expensesTable)
-    .where(eq(expensesTable.cardId, params.data.id));
+    .where(and(eq(expensesTable.cardId, params.data.id), eq(expensesTable.userId, userId)));
 
   if (linkedCount > 0) {
     res.status(409).json({
