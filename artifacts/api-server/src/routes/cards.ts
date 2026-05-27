@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc } from "drizzle-orm";
-import { db, cardsTable } from "@workspace/db";
+import { db, cardsTable, expensesTable } from "@workspace/db";
 import { CreateCardBody, DeleteCardParams, UpdateCardParams, UpdateCardBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 
@@ -80,6 +80,11 @@ router.delete("/cards/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+
+  await db
+    .update(expensesTable)
+    .set({ cardId: null })
+    .where(eq(expensesTable.cardId, params.data.id));
 
   const [deleted] = await db
     .delete(cardsTable)
