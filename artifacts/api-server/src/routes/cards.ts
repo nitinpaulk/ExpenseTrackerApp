@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import { db, cardsTable, expensesTable } from "@workspace/db";
 import { CreateCardBody, DeleteCardParams, UpdateCardParams, UpdateCardBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -81,10 +81,17 @@ router.delete("/cards/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  await db
-    .update(expensesTable)
-    .set({ cardId: null })
+  const [{ linkedCount }] = await db
+    .select({ linkedCount: count() })
+    .from(expensesTable)
     .where(eq(expensesTable.cardId, params.data.id));
+
+  if (linkedCount > 0) {
+    res.status(409).json({
+      error: `This card has ${linkedCount} linked expense${linkedCount === 1 ? "" : "s"}. Remove or reassign them before deleting the card.`,
+    });
+    return;
+  }
 
   const [deleted] = await db
     .delete(cardsTable)

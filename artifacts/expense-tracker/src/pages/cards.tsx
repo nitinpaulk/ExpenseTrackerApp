@@ -121,7 +121,11 @@ export default function Cards() {
           queryClient.invalidateQueries({ queryKey: getGetStatsByCardQueryKey({}) });
           queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey({}) });
         },
-        onError: () => toast({ title: "Failed to remove card", variant: "destructive" }),
+        onError: (err: unknown) => {
+          const body = (err as { data?: { error?: string } })?.data;
+          const message = body?.error ?? "Failed to remove card";
+          toast({ title: message, variant: "destructive" });
+        },
         onSettled: () => { setPendingDeleteId(null); setPendingDeleteName(""); },
       }
     );
@@ -398,7 +402,7 @@ export default function Cards() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-all"
-                        onClick={() => openEditCard(card)}
+                        onClick={() => openEditCard({ ...card, lastFour: card.lastFour ?? null })}
                         title="Edit card"
                       >
                         <Pencil className="w-3.5 h-3.5" />
