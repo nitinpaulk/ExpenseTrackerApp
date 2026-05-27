@@ -158,6 +158,27 @@ export const CreateCardBody = zod.object({
 });
 
 /**
+ * @summary Update a card
+ */
+export const UpdateCardParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCardBody = zod.object({
+  name: zod.string().min(1).optional(),
+  lastFour: zod.string().nullish(),
+  color: zod.string().optional(),
+});
+
+export const UpdateCardResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  lastFour: zod.string().nullish(),
+  color: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * @summary Delete a card
  */
 export const DeleteCardParams = zod.object({

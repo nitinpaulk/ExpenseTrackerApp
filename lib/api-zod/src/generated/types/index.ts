@@ -9,6 +9,7 @@
 export * from "./card";
 export * from "./cardInput";
 export * from "./cardStat";
+export * from "./cardUpdate";
 export * from "./category";
 export * from "./categoryInput";
 export * from "./categoryStat";

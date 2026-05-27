@@ -82,6 +82,14 @@ export interface CardInput {
   color: string;
 }
 
+export interface CardUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @nullable */
+  lastFour?: string | null;
+  color?: string;
+}
+
 export interface CategoryStat {
   categoryId: number;
   categoryName: string;

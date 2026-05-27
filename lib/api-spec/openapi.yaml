@@ -199,6 +199,31 @@ paths:
                 $ref: "#/components/schemas/Card"
 
   /cards/{id}:
+    patch:
+      operationId: updateCard
+      tags: [cards]
+      summary: Update a card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardUpdate"
+      responses:
+        "200":
+          description: Updated card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Not found
     delete:
       operationId: deleteCard
       tags: [cards]
@@ -411,6 +436,17 @@ components:
           minLength: 1
         lastFour:
           type: string
+        color:
+          type: string
+
+    CardUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        lastFour:
+          type: ["string", "null"]
         color:
           type: string
 

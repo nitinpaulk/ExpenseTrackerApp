@@ -20,6 +20,7 @@ import type {
   Card,
   CardInput,
   CardStat,
+  CardUpdate,
   Category,
   CategoryInput,
   CategoryStat,
@@ -867,6 +868,93 @@ export const useCreateCard = <
   TContext
 > => {
   return useMutation(getCreateCardMutationOptions(options));
+};
+
+/**
+ * @summary Update a card
+ */
+export const getUpdateCardUrl = (id: number) => {
+  return `/api/cards/${id}`;
+};
+
+export const updateCard = async (
+  id: number,
+  cardUpdate: CardUpdate,
+  options?: RequestInit,
+): Promise<Card> => {
+  return customFetch<Card>(getUpdateCardUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(cardUpdate),
+  });
+};
+
+export const getUpdateCardMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCard>>,
+    TError,
+    { id: number; data: BodyType<CardUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCard>>,
+  TError,
+  { id: number; data: BodyType<CardUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateCard"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCard>>,
+    { id: number; data: BodyType<CardUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCard(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCardMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCard>>
+>;
+export type UpdateCardMutationBody = BodyType<CardUpdate>;
+export type UpdateCardMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a card
+ */
+export const useUpdateCard = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCard>>,
+    TError,
+    { id: number; data: BodyType<CardUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCard>>,
+  TError,
+  { id: number; data: BodyType<CardUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateCardMutationOptions(options));
 };
 
 /**

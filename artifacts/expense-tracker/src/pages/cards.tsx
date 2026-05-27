@@ -6,6 +6,7 @@ import {
   useListCards, getListCardsQueryKey,
   useCreateCard,
   useDeleteCard,
+  useUpdateCard,
   useGetStatsByCard, getGetStatsByCardQueryKey,
   useListExpenses, getListExpensesQueryKey,
 } from "@workspace/api-client-react";
@@ -19,9 +20,12 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { CreditCard, Trash2, Plus } from "lucide-react";
+import { CreditCard, Trash2, Plus, Pencil } from "lucide-react";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -45,12 +49,17 @@ export default function Cards() {
   const { data: expenses } = useListExpenses({}, { query: { queryKey: getListExpensesQueryKey({}) } });
   const createCard = useCreateCard();
   const deleteCard = useDeleteCard();
+  const updateCard = useUpdateCard();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [pendingDeleteName, setPendingDeleteName] = useState("");
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
   const [showForm, setShowForm] = useState(false);
+  const [editingCard, setEditingCard] = useState<{ id: number; name: string; lastFour: string | null; color: string } | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editLastFour, setEditLastFour] = useState("");
+  const [editColor, setEditColor] = useState(PRESET_COLORS[0]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -73,6 +82,30 @@ export default function Cards() {
           setShowForm(false);
         },
         onError: () => toast({ title: "Failed to add card", variant: "destructive" }),
+      }
+    );
+  };
+
+  const openEditCard = (card: { id: number; name: string; lastFour: string | null; color: string }) => {
+    setEditingCard(card);
+    setEditName(card.name);
+    setEditLastFour(card.lastFour ?? "");
+    setEditColor(card.color);
+  };
+
+  const saveEditCard = () => {
+    if (!editingCard || !editName.trim()) return;
+    updateCard.mutate(
+      { id: editingCard.id, data: { name: editName.trim(), lastFour: editLastFour || null, color: editColor } },
+      {
+        onSuccess: () => {
+          toast({ title: "Card updated" });
+          queryClient.invalidateQueries({ queryKey: getListCardsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetStatsByCardQueryKey({}) });
+          queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey({}) });
+          setEditingCard(null);
+        },
+        onError: () => toast({ title: "Failed to update card", variant: "destructive" }),
       }
     );
   };
@@ -364,8 +397,18 @@ export default function Cards() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-all"
+                        onClick={() => openEditCard(card)}
+                        title="Edit card"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
                         onClick={() => { setPendingDeleteId(card.id); setPendingDeleteName(card.name); }}
+                        title="Delete card"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -382,6 +425,66 @@ export default function Cards() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit card dialog */}
+      <Dialog open={editingCard !== null} onOpenChange={(open) => { if (!open) setEditingCard(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Card</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-card-name">Card name</Label>
+              <Input
+                id="edit-card-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="e.g. Chase Sapphire"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-last-four">Last 4 digits <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                id="edit-last-four"
+                value={editLastFour}
+                onChange={(e) => setEditLastFour(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="1234"
+                maxLength={4}
+                className="font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Card color</Label>
+              <div className="flex gap-2 flex-wrap mt-1">
+                {PRESET_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="w-7 h-7 rounded-full transition-all"
+                    style={{
+                      backgroundColor: c,
+                      outline: editColor === c ? `3px solid ${c}` : "none",
+                      outlineOffset: "2px",
+                      transform: editColor === c ? "scale(1.15)" : "scale(1)",
+                    }}
+                    onClick={() => setEditColor(c)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setEditingCard(null)}>Cancel</Button>
+            <Button
+              onClick={saveEditCard}
+              disabled={!editName.trim() || updateCard.isPending}
+              className="min-w-[100px]"
+            >
+              {updateCard.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => { if (!open) { setPendingDeleteId(null); setPendingDeleteName(""); } }}>
         <AlertDialogContent>
