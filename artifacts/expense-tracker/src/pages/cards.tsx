@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -146,7 +147,7 @@ export default function Cards() {
                   />
                 </div>
                 <div>
-                  <FormLabel>Card color</FormLabel>
+                  <Label>Card color</Label>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {PRESET_COLORS.map((c) => (
                       <button
