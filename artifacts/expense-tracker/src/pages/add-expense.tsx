@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -7,17 +7,25 @@ import {
   useCreateExpense,
   useListCategories, getListCategoriesQueryKey,
   useListCards, getListCardsQueryKey,
+  useCreateCard,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Plus, X, Check } from "lucide-react";
+
+const PRESET_COLORS = [
+  "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
+  "#f97316", "#eab308", "#22c55e", "#14b8a6",
+  "#3b82f6", "#64748b",
+];
 
 const formSchema = z.object({
   amount: z.coerce.number().positive({ message: "Amount must be positive" }),
@@ -34,9 +42,15 @@ export default function AddExpense() {
   const { data: categories } = useListCategories({ query: { queryKey: getListCategoriesQueryKey() } });
   const { data: cards } = useListCards({ query: { queryKey: getListCardsQueryKey() } });
   const createExpense = useCreateExpense();
+  const createCard = useCreateCard();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [newCardName, setNewCardName] = useState("");
+  const [newCardLastFour, setNewCardLastFour] = useState("");
+  const [newCardColor, setNewCardColor] = useState(PRESET_COLORS[0]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -69,6 +83,32 @@ export default function AddExpense() {
         toast({ title: "Failed to log expense", variant: "destructive" });
       }
     });
+  };
+
+  const handleAddNewCard = () => {
+    if (!newCardName.trim()) return;
+    createCard.mutate(
+      { data: { name: newCardName.trim(), lastFour: newCardLastFour || undefined, color: newCardColor } },
+      {
+        onSuccess: (newCard) => {
+          queryClient.invalidateQueries({ queryKey: getListCardsQueryKey() });
+          form.setValue("cardId", newCard.id);
+          setShowAddCard(false);
+          setNewCardName("");
+          setNewCardLastFour("");
+          setNewCardColor(PRESET_COLORS[0]);
+          toast({ title: `Card "${newCard.name}" added and selected` });
+        },
+        onError: () => toast({ title: "Failed to add card", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleCancelAddCard = () => {
+    setShowAddCard(false);
+    setNewCardName("");
+    setNewCardLastFour("");
+    setNewCardColor(PRESET_COLORS[0]);
   };
 
   return (
@@ -176,7 +216,13 @@ export default function AddExpense() {
                         <span className="text-muted-foreground font-normal ml-1">(optional)</span>
                       </FormLabel>
                       <Select
-                        onValueChange={(val) => field.onChange(val === "none" ? undefined : Number(val))}
+                        onValueChange={(val) => {
+                          if (val === "__add_new__") {
+                            setShowAddCard(true);
+                          } else {
+                            field.onChange(val === "none" ? undefined : Number(val));
+                          }
+                        }}
                         value={field.value?.toString() || "none"}
                       >
                         <FormControl>
@@ -200,18 +246,98 @@ export default function AddExpense() {
                               </div>
                             </SelectItem>
                           ))}
+                          <SelectItem value="__add_new__">
+                            <div className="flex items-center gap-2 text-primary font-medium">
+                              <Plus className="w-3.5 h-3.5" />
+                              Add new card
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
-                      {cards?.length === 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          <a href="/cards" className="underline hover:text-foreground transition-colors">Add a card</a> to track card usage.
-                        </p>
-                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              {/* Inline add-card form */}
+              {showAddCard && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-primary" />
+                      New card
+                    </p>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={handleCancelAddCard}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-card-name" className="text-xs">Card name</Label>
+                      <Input
+                        id="new-card-name"
+                        value={newCardName}
+                        onChange={(e) => setNewCardName(e.target.value)}
+                        placeholder="e.g. Chase Sapphire"
+                        className="h-9 text-sm"
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddNewCard(); } }}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-card-last-four" className="text-xs">
+                        Last 4 digits <span className="text-muted-foreground">(optional)</span>
+                      </Label>
+                      <Input
+                        id="new-card-last-four"
+                        value={newCardLastFour}
+                        onChange={(e) => setNewCardLastFour(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        placeholder="1234"
+                        maxLength={4}
+                        className="h-9 text-sm font-mono"
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddNewCard(); } }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Color</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {PRESET_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          className="w-6 h-6 rounded-full transition-all"
+                          style={{
+                            backgroundColor: c,
+                            outline: newCardColor === c ? `3px solid ${c}` : "none",
+                            outlineOffset: "2px",
+                            transform: newCardColor === c ? "scale(1.2)" : "scale(1)",
+                          }}
+                          onClick={() => setNewCardColor(c)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-1">
+                    <Button type="button" variant="outline" size="sm" onClick={handleCancelAddCard}>
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddNewCard}
+                      disabled={!newCardName.trim() || createCard.isPending}
+                      className="gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      {createCard.isPending ? "Adding..." : "Add Card"}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <FormField
                 control={form.control}
