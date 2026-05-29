@@ -10,6 +10,7 @@ import {
   useGetStatsByCard, getGetStatsByCardQueryKey,
   useListExpenses, getListExpensesQueryKey,
 } from "@workspace/api-client-react";
+import { safeArray } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,11 @@ export default function Cards() {
   const { data: cards, isLoading: loadingCards } = useListCards({ query: { queryKey: getListCardsQueryKey() } });
   const { data: cardStats, isLoading: loadingStats } = useGetStatsByCard({}, { query: { queryKey: getGetStatsByCardQueryKey({}) } });
   const { data: expenses } = useListExpenses({}, { query: { queryKey: getListExpensesQueryKey({}) } });
+  const cardsArray = safeArray(cards);
+  const expensesArray = safeArray(expenses);
+  const cardsSafe = cardsArray;
+  const expensesSafe = expensesArray;
+  const cardStatsArray = safeArray(cardStats);
   const createCard = useCreateCard();
   const deleteCard = useDeleteCard();
   const updateCard = useUpdateCard();
@@ -131,8 +137,8 @@ export default function Cards() {
     );
   };
 
-  const pieData = cardStats?.filter((s) => s.total > 0) ?? [];
-  const topCard = cardStats?.filter(s => s.cardId !== null).sort((a, b) => b.total - a.total)[0];
+  const pieData = cardStatsArray.filter((s) => s.total > 0);
+  const topCard = cardStatsArray.filter((s) => s.cardId !== null).sort((a, b) => b.total - a.total)[0];
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
@@ -218,13 +224,13 @@ export default function Cards() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
         </div>
-      ) : cardStats && cardStats.filter(s => s.cardId !== null).length > 0 ? (
+      ) : cardStatsArray.filter((s) => s.cardId !== null).length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="border-border/50 shadow-sm">
             <CardContent className="p-6">
               <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Total across all cards</p>
               <p className="text-2xl font-bold font-mono">
-                {formatCurrency(cardStats.filter(s => s.cardId !== null).reduce((sum, s) => sum + s.total, 0))}
+                {formatCurrency(cardStatsArray.filter((s) => s.cardId !== null).reduce((sum, s) => sum + s.total, 0))}
               </p>
             </CardContent>
           </Card>
@@ -306,10 +312,10 @@ export default function Cards() {
           <CardContent className="h-[280px]">
             {loadingStats ? (
               <Skeleton className="w-full h-full rounded-xl" />
-            ) : cardStats && cardStats.filter(s => s.cardId !== null && s.total > 0).length > 0 ? (
+            ) : cardStatsArray.filter((s) => s.cardId !== null && s.total > 0).length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={cardStats.filter(s => s.cardId !== null && s.total > 0)}
+                  data={cardStatsArray.filter((s) => s.cardId !== null && s.total > 0)}
                   margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                   layout="vertical"
                 >
@@ -334,7 +340,7 @@ export default function Cards() {
                     contentStyle={{ borderRadius: "12px", border: "1px solid hsl(var(--border))", fontFamily: "var(--font-sans)", fontWeight: 500 }}
                   />
                   <Bar dataKey="total" radius={[0, 4, 4, 0]}>
-                    {cardStats.filter(s => s.cardId !== null && s.total > 0).map((entry, i) => (
+                    {cardStatsArray.filter((s) => s.cardId !== null && s.total > 0).map((entry, i) => (
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Bar>
@@ -359,11 +365,11 @@ export default function Cards() {
             <div className="space-y-3">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
             </div>
-          ) : cards && cards.length > 0 ? (
+          ) : cardsSafe.length > 0 ? (
             <div className="space-y-3">
-              {cards.map((card, idx) => {
+              {cardsSafe.map((card, idx) => {
                 const stat = cardStats?.find((s) => s.cardId === card.id);
-                const cardExpenses = expenses?.filter((e) => e.cardId === card.id) ?? [];
+                const cardExpenses = expensesSafe.filter((e) => e.cardId === card.id);
                 return (
                   <div
                     key={card.id}

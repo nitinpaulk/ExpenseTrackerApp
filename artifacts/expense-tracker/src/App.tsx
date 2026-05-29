@@ -7,7 +7,7 @@ import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import Dashboard from "@/pages/dashboard";
 import Expenses from "@/pages/expenses";
 import AddExpense from "@/pages/add-expense";
@@ -131,6 +131,14 @@ function ClerkAuthTokenSetter() {
     setAuthTokenGetter(() => getToken());
     return () => setAuthTokenGetter(null);
   }, [getToken]);
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL ?? null;
+    // In development, fall back to localhost:8080 if no VITE_API_URL provided
+    const devFallback = import.meta.env.DEV ? `http://localhost:${import.meta.env.VITE_API_PORT ?? 8080}` : null;
+    const effective = apiUrl ?? devFallback;
+    setBaseUrl(effective);
+    return () => setBaseUrl(null);
+  }, []);
   return null;
 }
 

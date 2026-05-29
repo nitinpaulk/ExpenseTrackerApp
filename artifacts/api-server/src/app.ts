@@ -48,6 +48,14 @@ app.use(
   })),
 );
 
+app.get("/", (_req, res) => {
+  res.json({
+    status: "ok",
+    message: "Welcome to the Expense Tracker API",
+    api: "/api/healthz",
+  });
+});
+
 app.use("/api", router);
 
 export default app;

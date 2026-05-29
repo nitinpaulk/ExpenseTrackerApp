@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { CreditCard, Plus, X, Check } from "lucide-react";
+import { safeArray } from "@/lib/utils";
 
 const PRESET_COLORS = [
   "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
@@ -41,6 +42,8 @@ type FormValues = z.infer<typeof formSchema>;
 export default function AddExpense() {
   const { data: categories } = useListCategories({ query: { queryKey: getListCategoriesQueryKey() } });
   const { data: cards } = useListCards({ query: { queryKey: getListCardsQueryKey() } });
+  const categoriesArray = safeArray(categories);
+  const cardsArray = safeArray(cards);
   const createExpense = useCreateExpense();
   const createCard = useCreateCard();
   const { toast } = useToast();
@@ -191,7 +194,7 @@ export default function AddExpense() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {categories?.map((cat) => (
+                          {categoriesArray.map((cat) => (
                             <SelectItem key={cat.id} value={cat.id.toString()}>
                               <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -234,7 +237,7 @@ export default function AddExpense() {
                           <SelectItem value="none">
                             <span className="text-muted-foreground">No card</span>
                           </SelectItem>
-                          {cards?.map((card) => (
+                          {cardsArray.map((card) => (
                             <SelectItem key={card.id} value={card.id.toString()}>
                               <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: card.color }} />

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { 
+import {
   useGetExpenseSummary, getGetExpenseSummaryQueryKey,
   useGetMonthlyStats, getGetMonthlyStatsQueryKey,
   useListExpenses, getListExpensesQueryKey,
@@ -28,6 +28,7 @@ import {
 import { DollarSign, TrendingUp, Calendar, Hash, Trash2, Target } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { safeArray } from "@/lib/utils";
 
 export default function Dashboard() {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
@@ -39,6 +40,10 @@ export default function Dashboard() {
   const { data: monthlyStats, isLoading: loadingStats } = useGetMonthlyStats({ query: { queryKey: getGetMonthlyStatsQueryKey() } });
   const { data: recentExpenses, isLoading: loadingExpenses } = useListExpenses({}, { query: { queryKey: getListExpensesQueryKey({}) } });
   const { data: categoryStats, isLoading: loadingCategoryStats } = useGetStatsByCategory({}, { query: { queryKey: getGetStatsByCategoryQueryKey({}) } });
+
+  const monthlyStatsArray = safeArray(monthlyStats);
+  const recentExpensesArray = safeArray(recentExpenses);
+  const categoryStatsArray = safeArray(categoryStats);
 
   const deleteExpense = useDeleteExpense();
 
@@ -75,7 +80,7 @@ export default function Dashboard() {
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
-  const pieData = categoryStats?.filter(s => s.total > 0) ?? [];
+  const pieData = categoryStatsArray.filter((s) => s.total > 0);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
@@ -103,9 +108,9 @@ export default function Dashboard() {
           <CardContent className="h-[300px]">
             {loadingStats ? (
               <Skeleton className="w-full h-full rounded-xl" />
-            ) : monthlyStats && monthlyStats.length > 0 ? (
+            ) : monthlyStatsArray.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={monthlyStatsArray} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="month"
@@ -197,9 +202,9 @@ export default function Dashboard() {
             <div className="space-y-4">
               {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
             </div>
-          ) : recentExpenses && recentExpenses.length > 0 ? (
+          ) : recentExpensesArray.length > 0 ? (
             <div className="space-y-3">
-              {recentExpenses.slice(0, 6).map((exp, idx) => (
+              {recentExpensesArray.slice(0, 6).map((exp, idx) => (
                 <div
                   key={exp.id}
                   className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/30 hover:bg-muted/50 transition-colors animate-in fade-in slide-in-from-bottom-2 group"

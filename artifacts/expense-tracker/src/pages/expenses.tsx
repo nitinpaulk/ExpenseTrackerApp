@@ -39,6 +39,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, ListFilter, AlertCircle, Pencil, CreditCard } from "lucide-react";
 import { Link } from "wouter";
+import { safeArray } from "@/lib/utils";
 
 type ExpenseRow = {
   id: number;
@@ -77,6 +78,8 @@ function EditExpenseDialog({
   const updateExpense = useUpdateExpense();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const categoriesArray = safeArray(categories);
+  const cardsArray = safeArray(cards);
 
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
@@ -204,7 +207,7 @@ function EditExpenseDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories?.map((cat) => (
+                      {categoriesArray.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id.toString()}>
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -238,7 +241,7 @@ function EditExpenseDialog({
                       <SelectItem value="none">
                         <span className="text-muted-foreground">No card</span>
                       </SelectItem>
-                      {cards?.map((card) => (
+                      {cardsArray.map((card) => (
                         <SelectItem key={card.id} value={card.id.toString()}>
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: card.color }} />
@@ -298,6 +301,7 @@ export default function Expenses() {
   const { toast } = useToast();
 
   const { data: categories } = useListCategories({ query: { queryKey: getListCategoriesQueryKey() } });
+  const categoriesArray = safeArray(categories);
 
   const params = {
     ...(categoryFilter !== "all" && { category: categoryFilter }),
@@ -305,10 +309,11 @@ export default function Expenses() {
   };
 
   const { data: expenses, isLoading } = useListExpenses(params, { query: { queryKey: getListExpensesQueryKey(params) } });
+  const expensesArray = safeArray(expenses);
 
   const deleteExpense = useDeleteExpense();
 
-  const allIds = expenses?.map((e) => e.id) ?? [];
+  const allIds = expensesArray.map((e) => e.id) ?? [];
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
   const someSelected = allIds.some((id) => selected.has(id));
   const selectedCount = allIds.filter((id) => selected.has(id)).length;
@@ -419,7 +424,7 @@ export default function Expenses() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories?.map(c => (
+                  {categoriesArray.map(c => (
                     <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -459,9 +464,9 @@ export default function Expenses() {
             <div className="p-4 space-y-4">
               {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
             </div>
-          ) : expenses && expenses.length > 0 ? (
+            ) : expensesArray.length > 0 ? (
             <div className="divide-y divide-border/50">
-              {expenses.map((exp, idx) => {
+              {expensesArray.map((exp, idx) => {
                 const isChecked = selected.has(exp.id);
                 return (
                   <div

@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
+import { safeArray } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
@@ -23,6 +24,7 @@ const formSchema = z.object({
 
 export default function Categories() {
   const { data: categories, isLoading: loadingCategories } = useListCategories({ query: { queryKey: getListCategoriesQueryKey() } });
+  const categoriesArray = safeArray(categories);
   const createCategory = useCreateCategory();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -116,9 +118,9 @@ export default function Categories() {
             <div className="p-4 space-y-3">
               {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
             </div>
-          ) : categories && categories.length > 0 ? (
+          ) : categoriesArray.length > 0 ? (
             <div className="divide-y divide-border/50">
-              {categories.map((cat) => (
+              {categoriesArray.map((cat) => (
                 <div key={cat.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: cat.color }} />
