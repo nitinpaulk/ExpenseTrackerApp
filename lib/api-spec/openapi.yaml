@@ -344,7 +344,7 @@ components:
           type: ["string", "null"]
         date:
           type: string
-          format: date
+          format: date-time
         createdAt:
           type: string
           format: date-time
@@ -367,7 +367,7 @@ components:
           type: string
         date:
           type: string
-          format: date
+          format: date-time
 
     ExpenseUpdate:
       type: object
@@ -386,7 +386,7 @@ components:
           type: ["string", "null"]
         date:
           type: string
-          format: date
+          format: date-time
 
     Category:
       type: object

@@ -14,7 +14,7 @@ export const expensesTable = pgTable("expenses", {
     .references(() => categoriesTable.id),
   cardId: integer("card_id").references(() => cardsTable.id),
   notes: text("notes"),
-  date: date("date").notNull(),
+  date: timestamp("date").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

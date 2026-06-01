@@ -81,6 +81,8 @@ function EditExpenseDialog({
   const categoriesArray = safeArray(categories);
   const cardsArray = safeArray(cards);
 
+  const formatDateForInput = (dateString: string) => dateString.slice(0, 10);
+
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
@@ -88,7 +90,7 @@ function EditExpenseDialog({
       description: expense.description,
       categoryId: expense.categoryId,
       cardId: expense.cardId ?? undefined,
-      date: expense.date,
+      date: formatDateForInput(expense.date),
       notes: expense.notes ?? "",
     },
   });
@@ -99,7 +101,7 @@ function EditExpenseDialog({
       description: expense.description,
       categoryId: expense.categoryId,
       cardId: expense.cardId ?? undefined,
-      date: expense.date,
+      date: formatDateForInput(expense.date),
       notes: expense.notes ?? "",
     });
   }, [expense.id]);

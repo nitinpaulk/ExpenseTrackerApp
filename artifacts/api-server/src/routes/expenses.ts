@@ -28,6 +28,62 @@ const expenseWithCategory = {
   createdAt: expensesTable.createdAt,
 };
 
+function parseDateToUTC(date: Date | string): Date {
+  if (typeof date === "string") {
+    const exactDateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (exactDateMatch) {
+      const [, year, month, day] = exactDateMatch;
+      return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0));
+    }
+
+    const parsed = new Date(date);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+
+    throw new Error(`Invalid date value: ${date}`);
+  }
+  return date;
+}
+
+/**
+ * Combine a date-only value (YYYY-MM-DD) with the current server time (UTC)
+ * so the stored timestamp reflects the chosen day and the time when insertion occurs.
+ */
+function combineDateWithInsertionTime(date: Date | string): Date {
+  const now = new Date();
+  const nowUTC = {
+    hours: now.getUTCHours(),
+    minutes: now.getUTCMinutes(),
+    seconds: now.getUTCSeconds(),
+    ms: now.getUTCMilliseconds(),
+  };
+
+  if (typeof date === "string") {
+    const exactDateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (exactDateMatch) {
+      const [, year, month, day] = exactDateMatch;
+      return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), nowUTC.hours, nowUTC.minutes, nowUTC.seconds, nowUTC.ms));
+    }
+
+    const parsed = new Date(date);
+    if (!Number.isNaN(parsed.getTime())) {
+      // keep parsed date's date parts, but replace time with current UTC time
+      return new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate(), nowUTC.hours, nowUTC.minutes, nowUTC.seconds, nowUTC.ms));
+    }
+
+    throw new Error(`Invalid date value: ${date}`);
+  }
+
+  // If a Date object came in, use its date parts with current UTC time
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), nowUTC.hours, nowUTC.minutes, nowUTC.seconds, nowUTC.ms));
+}
+
+function formatDateForClient(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return date.toISOString();
+}
+
 router.get("/expenses", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as any).userId as string;
   const params = ListExpensesQueryParams.safeParse(req.query);
@@ -72,6 +128,8 @@ router.post("/expenses", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const normalizedDate = combineDateWithInsertionTime(parsed.data.date);
+
   const [expense] = await db
     .insert(expensesTable)
     .values({
@@ -81,7 +139,7 @@ router.post("/expenses", requireAuth, async (req, res): Promise<void> => {
       categoryId: parsed.data.categoryId,
       cardId: parsed.data.cardId ?? null,
       notes: parsed.data.notes ?? null,
-      date: parsed.data.date,
+      date: normalizedDate,
     })
     .returning();
 
@@ -91,8 +149,11 @@ router.post("/expenses", requireAuth, async (req, res): Promise<void> => {
     .innerJoin(categoriesTable, eq(expensesTable.categoryId, categoriesTable.id))
     .leftJoin(cardsTable, eq(expensesTable.cardId, cardsTable.id))
     .where(eq(expensesTable.id, expense.id));
-
-  res.status(201).json({ ...result, amount: parseFloat(result.amount as unknown as string) });
+  res.status(201).json({
+    ...result,
+    amount: parseFloat(result.amount as unknown as string),
+    date: formatDateForClient(result.date),
+  });
 });
 
 router.get("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
@@ -134,13 +195,15 @@ router.patch("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  console.log("[PATCH /expenses/:id] Request body:", req.body);
+
   const updateData: Record<string, unknown> = {};
   if (parsed.data.amount !== undefined) updateData.amount = String(parsed.data.amount);
   if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
   if (parsed.data.categoryId !== undefined) updateData.categoryId = parsed.data.categoryId;
   if ("cardId" in parsed.data) updateData.cardId = parsed.data.cardId ?? null;
   if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
-  if (parsed.data.date !== undefined) updateData.date = parsed.data.date;
+  if (parsed.data.date !== undefined) updateData.date = combineDateWithInsertionTime(parsed.data.date);
 
   const [updated] = await db
     .update(expensesTable)
@@ -153,6 +216,8 @@ router.patch("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  console.log("[PATCH /expenses/:id] Updated DB row:", updated);
+
   const [result] = await db
     .select(expenseWithCategory)
     .from(expensesTable)
@@ -160,7 +225,11 @@ router.patch("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
     .leftJoin(cardsTable, eq(expensesTable.cardId, cardsTable.id))
     .where(eq(expensesTable.id, updated.id));
 
-  res.json({ ...result, amount: parseFloat(result.amount as unknown as string) });
+  res.json({
+    ...result,
+    amount: parseFloat(result.amount as unknown as string),
+    date: formatDateForClient(result.date),
+  });
 });
 
 router.delete("/expenses/:id", requireAuth, async (req, res): Promise<void> => {
