@@ -104,6 +104,53 @@ router.get("/expenses", requireAuth, async (req, res): Promise<void> => {
     );
   }
 
+  // Optionally return the DB-stored date string unmodified (useful for
+  // dashboards that expect the original DB format). Pass ?rawDate=true
+  // to get the date as text via to_char().
+  const rawDate = req.query.rawDate === "true" || req.query.rawDate === "1";
+
+  if (rawDate) {
+    const rows = await db.execute(sql`
+      SELECT
+        e.id,
+        e.amount,
+        e.description,
+        e.category_id AS "categoryId",
+        c.name AS "categoryName",
+        e.card_id AS "cardId",
+        ca.name AS "cardName",
+        ca.color AS "cardColor",
+        ca.last_four AS "cardLastFour",
+        e.notes,
+        to_char(e.date, 'YYYY-MM-DD HH24:MI:SS.US') AS date,
+        to_char(e.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "createdAt"
+      FROM expenses e
+      INNER JOIN categories c ON e.category_id = c.id
+      LEFT JOIN cards ca ON e.card_id = ca.id
+      WHERE e.user_id = ${userId}
+      ORDER BY e.date DESC, e.created_at DESC
+    `);
+
+    const data = rows.rows as Array<Record<string, any>>;
+    const mapped = data.map((r) => ({
+      id: r.id,
+      amount: parseFloat(r.amount as unknown as string),
+      description: r.description,
+      categoryId: r.categoryId,
+      categoryName: r.categoryName,
+      cardId: r.cardId,
+      cardName: r.cardName,
+      cardColor: r.cardColor,
+      cardLastFour: r.cardLastFour,
+      notes: r.notes,
+      date: r.date, // returned as DB-formatted string
+      createdAt: r.createdAt,
+    }));
+
+    res.json(mapped);
+    return;
+  }
+
   const expenses = await db
     .select(expenseWithCategory)
     .from(expensesTable)
