@@ -499,7 +499,7 @@ export default function Expenses() {
                             {exp.cardLastFour && <span className="font-mono">••{exp.cardLastFour}</span>}
                           </span>
                         )}
-                        <span className="text-muted-foreground font-mono">{format(new Date(exp.date), 'MMM d, yyyy')}</span>
+                        <span className="text-muted-foreground font-mono">{exp.date.slice(0, 10)}</span>
                       </div>
                     </div>
 
