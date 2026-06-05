@@ -121,6 +121,7 @@ export interface MonthlyStat {
 export interface ExpenseSummary {
   totalAllTime: number;
   totalThisMonth: number;
+  expensesTillDate: number;
   totalLastMonth: number;
   expenseCount: number;
   /** @nullable */

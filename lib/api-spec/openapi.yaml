@@ -500,12 +500,15 @@ components:
 
     ExpenseSummary:
       type: object
-      required: [totalAllTime, totalThisMonth, totalLastMonth, expenseCount, topCategory, averagePerDay]
+      required: [totalAllTime, totalThisMonth, expensesTillDate, totalLastMonth, expenseCount, topCategory, averagePerDay]
       properties:
         totalAllTime:
           type: number
         totalThisMonth:
           type: number
+        expensesTillDate:
+          type: number
+          description: Sum of expenses from beginning of month until current date
         totalLastMonth:
           type: number
         expenseCount:

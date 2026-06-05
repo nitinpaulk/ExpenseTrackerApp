@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
+import { calculateAverageDailyThisMonth } from "../lib/expense-summary.js";
 
 const router: IRouter = Router();
 
@@ -92,7 +93,19 @@ router.get("/stats/summary", requireAuth, async (req, res): Promise<void> => {
 
   const [thisMonthRow] = (await db.execute(sql`
     SELECT COALESCE(SUM(amount), 0) AS total FROM expenses
-    WHERE user_id = ${userId} AND TO_CHAR(date, 'YYYY-MM') = ${thisMonth}
+    WHERE user_id = ${userId}
+      AND date >= date_trunc('month', CURRENT_DATE)
+      AND CAST(date AS DATE) <= CURRENT_DATE
+  `)).rows as Array<{ total: string }>;
+
+  const [expensesTillDateRow] = (await db.execute(sql`
+    SELECT COALESCE(SUM(e.amount), 0) AS total
+    FROM expenses e
+    JOIN categories c ON c.id = e.category_id
+    WHERE e.user_id = ${userId}
+      AND e.date >= date_trunc('month', CURRENT_DATE)
+      AND CAST(e.date AS DATE) <= CURRENT_DATE
+      AND c.name NOT IN ('Rent', 'Utilities')
   `)).rows as Array<{ total: string }>;
 
   const [lastMonthRow] = (await db.execute(sql`
@@ -109,21 +122,18 @@ router.get("/stats/summary", requireAuth, async (req, res): Promise<void> => {
     LIMIT 1
   `)).rows as Array<{ name: string }>;
 
-  const [avgRow] = (await db.execute(sql`
-    SELECT COALESCE(AVG(daily_total), 0) AS avg_per_day FROM (
-      SELECT SUM(amount) AS daily_total FROM expenses
-      WHERE user_id = ${userId}
-      GROUP BY date
-    ) AS daily
-  `)).rows as Array<{ avg_per_day: string }>;
+  const totalThisMonth = parseFloat(thisMonthRow?.total ?? "0");
+  const expensesTillDate = parseFloat(expensesTillDateRow?.total ?? "0");
+  const averagePerDay = calculateAverageDailyThisMonth(expensesTillDate, now);
 
   res.json({
     totalAllTime: parseFloat(allTime?.total ?? "0"),
-    totalThisMonth: parseFloat(thisMonthRow?.total ?? "0"),
+    totalThisMonth,
+    expensesTillDate,
     totalLastMonth: parseFloat(lastMonthRow?.total ?? "0"),
     expenseCount: parseInt(allTime?.count ?? "0", 10),
     topCategory: topCategoryRow?.name ?? null,
-    averagePerDay: parseFloat(avgRow?.avg_per_day ?? "0"),
+    averagePerDay,
   });
 });
 

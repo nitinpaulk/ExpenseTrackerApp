@@ -238,6 +238,7 @@ export const GetMonthlyStatsResponse = zod.array(GetMonthlyStatsResponseItem);
 export const GetExpenseSummaryResponse = zod.object({
   totalAllTime: zod.number(),
   totalThisMonth: zod.number(),
+  expensesTillDate: zod.number(),
   totalLastMonth: zod.number(),
   expenseCount: zod.number(),
   topCategory: zod.string().nullable(),

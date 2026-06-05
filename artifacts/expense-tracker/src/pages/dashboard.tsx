@@ -81,6 +81,7 @@ export default function Dashboard() {
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
   const pieData = categoryStatsArray.filter((s) => s.total > 0);
+  const dailyAverage = summary?.averagePerDay ?? 0;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
@@ -93,7 +94,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total All Time" value={summary?.totalAllTime} icon={DollarSign} loading={loadingSummary} formatter={formatCurrency} />
         <StatCard title="This Month" value={summary?.totalThisMonth} icon={TrendingUp} loading={loadingSummary} formatter={formatCurrency} highlight />
-        <StatCard title="Daily Average" value={summary?.averagePerDay} icon={Calendar} loading={loadingSummary} formatter={formatCurrency} />
+        <StatCard title="Daily Average" value={dailyAverage} icon={Calendar} loading={loadingSummary} formatter={formatCurrency} />
         <StatCard title="Top Category" value={summary?.topCategory} icon={Hash} loading={loadingSummary} />
       </div>
 
