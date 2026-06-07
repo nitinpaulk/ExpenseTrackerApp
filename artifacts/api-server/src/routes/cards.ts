@@ -85,7 +85,7 @@ router.delete("/cards/:id", requireAuth, async (req, res): Promise<void> => {
     .select({ id: cardsTable.id })
     .from(cardsTable)
     .where(and(eq(cardsTable.id, params.data.id), eq(cardsTable.userId, userId)))
-    .then((rows) => rows[0] ?? null);
+    .then((rows: any[]) => rows[0] ?? null);
 
   if (!card) {
     res.status(404).json({ error: "Card not found" });

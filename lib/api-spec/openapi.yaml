@@ -218,6 +218,44 @@ paths:
       responses:
         "200":
           description: Updated card
+
+  /categories/{id}:
+    patch:
+      operationId: updateCategory
+      tags: [categories]
+      summary: Update a category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryUpdate"
+      responses:
+        "200":
+          description: Updated category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    delete:
+      operationId: deleteCategory
+      tags: [categories]
+      summary: Delete a category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
           content:
             application/json:
               schema:
@@ -447,6 +485,15 @@ components:
           minLength: 1
         lastFour:
           type: ["string", "null"]
+        color:
+          type: string
+
+    CategoryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
         color:
           type: string
 

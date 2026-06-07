@@ -13,6 +13,9 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = env.BASE_PATH || process.env.BASE_PATH || "/";
+const apiProxyTarget =
+  env.VITE_API_BASE_URL || process.env.VITE_API_BASE_URL ||
+  "http://127.0.0.1:8080";
 
 export default defineConfig({
   base: basePath,
@@ -53,6 +56,13 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+    },
+    proxy: {
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
   preview: {

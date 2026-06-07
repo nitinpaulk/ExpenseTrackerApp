@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateAverageDailyThisMonth } from "../routes/stats.ts";
+import { calculateAverageDailyThisMonth } from "../lib/expense-summary";
 
 test("returns 0 when no spending has occurred this month", () => {
   assert.strictEqual(calculateAverageDailyThisMonth(0, new Date("2026-06-04")), 0);

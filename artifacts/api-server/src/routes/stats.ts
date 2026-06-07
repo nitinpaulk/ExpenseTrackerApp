@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
-import { calculateAverageDailyThisMonth } from "../lib/expense-summary.js";
+import { calculateAverageDailyThisMonth } from "../lib/expense-summary";
 
 const router: IRouter = Router();
 

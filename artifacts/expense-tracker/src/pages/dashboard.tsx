@@ -19,13 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
+import { format, startOfWeek, endOfWeek, parseISO, isWithinInterval } from "date-fns";
 import {
   ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend, Tooltip as RechartsTooltip,
 } from "recharts";
-import { DollarSign, TrendingUp, Calendar, Hash, Trash2, Target } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, TrendingDown, Trash2, Target } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { safeArray } from "@/lib/utils";
@@ -83,6 +83,25 @@ export default function Dashboard() {
   const pieData = categoryStatsArray.filter((s) => s.total > 0);
   const dailyAverage = summary?.averagePerDay ?? 0;
 
+  // Calculate weekly average: all expenses from Monday to Sunday of current week, excluding specified categories, divided by 7
+  const excludedCategories = ["Auto Expenses", "Utilities", "Rent"];
+  const today = new Date();
+  const mondayThisWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday = 1
+  const sundayThisWeek = endOfWeek(today, { weekStartsOn: 1 });
+
+  const thisWeekExpenses = recentExpensesArray.filter((expense) => {
+    if (!expense.date) return false;
+    const expenseDate = parseISO(expense.date);
+    return isWithinInterval(expenseDate, { start: mondayThisWeek, end: sundayThisWeek });
+  });
+
+  const thisWeekFiltered = thisWeekExpenses.filter(
+    (exp) => !excludedCategories.includes(exp.categoryName)
+  );
+
+  const weeklyTotal = thisWeekFiltered.reduce((sum, exp) => sum + Number(exp.amount), 0);
+  const weeklyAverageExcluded = weeklyTotal / 7;
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
       <div>
@@ -95,7 +114,7 @@ export default function Dashboard() {
         <StatCard title="Total All Time" value={summary?.totalAllTime} icon={DollarSign} loading={loadingSummary} formatter={formatCurrency} />
         <StatCard title="This Month" value={summary?.totalThisMonth} icon={TrendingUp} loading={loadingSummary} formatter={formatCurrency} highlight />
         <StatCard title="Daily Average" value={dailyAverage} icon={Calendar} loading={loadingSummary} formatter={formatCurrency} />
-        <StatCard title="Top Category" value={summary?.topCategory} icon={Hash} loading={loadingSummary} />
+        <StatCard title="Weekly Average" value={weeklyAverageExcluded} icon={TrendingDown} loading={loadingSummary || loadingCategoryStats || loadingExpenses} formatter={formatCurrency} />
       </div>
 
       {/* Charts row */}
